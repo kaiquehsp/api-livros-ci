@@ -1,0 +1,18 @@
+// Análise estática de código (qualidade): ESLint + typescript-eslint
+import js from '@eslint/js';
+import globals from 'globals';
+import tseslint from 'typescript-eslint';
+
+export default tseslint.config(
+  { ignores: ['dist/', 'node_modules/', 'coverage/'] },
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  {
+    languageOptions: { globals: globals.node },
+    rules: {
+      eqeqeq: 'error',
+      'no-console': ['warn', { allow: ['log', 'error'] }],
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
+  },
+);
