@@ -1,0 +1,46 @@
+{
+  "name": "api-livros-ci",
+  "version": "1.0.0",
+  "description": "API REST de livros (Express + PostgreSQL) com pipeline de CI no GitHub Actions",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "security": "npm run security:sast && npm run security:deps",
+    "security:sast": "eslint --config eslint.security.config.mjs --max-warnings 0 src",
+    "security:deps": "npm audit --audit-level=high --omit=dev",
+    "build": "tsc -p tsconfig.build.json",
+    "test:unit": "vitest run --config vitest.config.mts",
+    "test:integration": "vitest run --config vitest.integration.config.mts"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.3.0",
+    "helmet": "^8.3.0",
+    "pg": "^8.23.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.6",
+    "@types/pg": "^8.23.1",
+    "@types/supertest": "^7.2.1",
+    "eslint": "^10.15.0",
+    "eslint-plugin-security": "^4.2.1",
+    "globals": "^17.14.0",
+    "prettier": "^3.10.1",
+    "supertest": "^7.3.2",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.2",
+    "vitest": "^5.1.0"
+  },
+  "type": "commonjs",
+  "engines": {
+    "node": ">=22"
+  }
+}

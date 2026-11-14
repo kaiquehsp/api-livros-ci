@@ -1,0 +1,100 @@
+name: CI - API de Livros
+
+# Etapa 1 — Gatilho: Pull Request direcionado à main
+on:
+  pull_request:
+    branches: ['main']
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Validar aplicacao
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Banco SQL descartável usado apenas pelos testes de integração
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: livros
+          POSTGRES_PASSWORD: livros
+          POSTGRES_DB: livros_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U livros"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://livros:livros@localhost:5432/livros_test
+
+    steps:
+      - name: Baixar o codigo
+        uses: actions/checkout@v6
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # Etapa 2 — Qualidade
+      - name: Analise estatica de codigo (ESLint)
+        run: npm run lint
+
+      - name: Analise de formatacao (Prettier)
+        run: npm run format:check
+
+      - name: Analise estatica de seguranca (SAST)
+        run: npm run security:sast
+
+      - name: Auditoria de dependencias (npm audit)
+        run: npm run security:deps
+
+      # Etapa 3 — Build
+      - name: Build da aplicacao (TypeScript)
+        run: npm run build
+
+      # Etapa 4 — Testes
+      - name: Testes unitarios
+        run: npm run test:unit
+
+      - name: Testes de integracao (API + PostgreSQL)
+        run: npm run test:integration
+
+      # Etapa 5 — Imagem Docker (construída e validada, sem publicar)
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Criar imagem Docker
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: api-livros:pr-${{ github.event.pull_request.number }}
+
+      - name: Smoke test da imagem
+        run: |
+          docker run -d --name api --network host -e DATABASE_URL="$DATABASE_URL" \
+            api-livros:pr-${{ github.event.pull_request.number }}
+          for i in $(seq 1 20); do
+            curl -fsS http://localhost:3000/health && exit 0
+            sleep 1
+          done
+          docker logs api
+          exit 1
